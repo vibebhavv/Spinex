@@ -1,56 +1,55 @@
 # SpineX Phish
 A Modular Adversary Simulation & Phishing Framework
 
-SpineX Phish is a high-performance, template-driven framework designed for security researchers to conduct end-to-end phishing simulations. While it ships with Instagram-style templates, its core engine is built to simulate any authentication flow.
+SpineX Phish is a high-performance, template-driven framework designed for security researchers to conduct end-to-end phishing simulations. By decoupling the dashboard from the exfiltration server, it provides a stable environment for credential harvesting and target analytics.
 
 ### 🎯 Project Scope
+This tool automates the three pillars of a modern phishing operation:
 
-This tool automates the three pillars of a phishing operation:
-
-- Delivery: SMTP-based email spoofing with dynamic placeholder injection.
-- Hosting: Integrated instatunnel manager to expose local landing pages to the WAN.
-- Exfiltration: A centralized dashboard to monitor "Captured" vs "Converted" targets.
+- Delivery: SMTP-based email spoofing with dynamic placeholder injection and device-specific login alerts.
+- Hosting: A dual-server architecture using Flask to handle dynamic POST requests and credential storage.
+- Exfiltration: A centralized Streamlit dashboard to monitor live sessions, manage tunnels, and analyze captured data.
 
 ### 🚀 Key Features
-- Agnostic Template Engine: Easily add new targets (LinkedIn, Google, Corporate SSO) by dropping HTML files into the assets/ directory.
-- Live Payload Preview: Side-by-side HTML editor and previewer to ensure your email looks perfect before "Launch."
-- Logical Analytics: Real-time calculation of CTR (Click-Through Rate) and Conversion Success using local JSON state management.
-- Device Fingerprinting: Captures User-Agent, IP address, and screen resolution to identify sandbox environments or security crawlers.
+- Multi-Vector Tunneling: Integrated support for Ngrok, Cloudflare, and SSH (Localhost.run) with real-time PID tracking.
+- Dynamic Flask Backend: A dedicated data receiver (server.py) that handles POST methods, preventing the "501 Unsupported Method" errors common in static servers.
+- Precision Kill-Switch: Logic to terminate phish servers and tunnels without affecting the main Streamlit dashboard.
+- Advanced Fingerprinting: Captures User-Agent, IP address, and timestamps, organized by the specific target username provided during the campaign.
+- Agnostic Template Engine: Easily swap templates for Instagram, LinkedIn, or Corporate SSO by modifying the assets/ directory.
+
 
 ## 📂 Directory Structure
 ```
 ├── assets/
-│   ├── mail_templates/    # HTML files for the emails (IG, Google, etc.)
-│   ├── phish_temp/        # The actual fake login pages
-│   └── spinex_logo.png    # Dashboard branding
-├── victims.json           # Log of captured credentials
-├── stats.json             # Counter for sent emails (logical tracking)
-└── app.py                 # Main Streamlit interface
+│   ├── mail_templates/    # HTML files for emails (IG, Google, etc.)
+│   └── phish_temp/        # The actual fake login pages (index.html)
+├── app.py                 # Main Streamlit interface (Admin Panel)
+├── server.py              # Flask Backend (Data Receiver & File Server)
+├── victims.json           # Live log of captured credentials
+└── .streamlit/secrets.toml # SMTP & Email configuration
 ```
-
 ## 🛠️ Setup & Usage
 Requirements
 - Python 3.9+
-- Node.js (for instatunnel)
-- SMTP Credentials (e.g., Gmail App Password)
+- pip install -r requirements.txt
+
+SMTP Credentials (e.g., Gmail App Password)
 
 Configuration
-- Place your SMTP credentials in ```.streamlit/secrets.toml```:
-```
-[email]
-sender_email = "your-email@gmail.com"
-app_password = "xxxx xxxx xxxx xxxx"
-smtp_server = "smtp.gmail.com"
-port = 587
-```
-### 📊 Conversion Funnel Logic
-The dashboard doesn't just show numbers; it tracks the effectiveness of your campaign:
+SMTP: Place your credentials in .streamlit/secrets.toml.
 
-- Sent: Every time a campaign is launched, stats.json increments.
+Server: Ensure server.py is in the root directory. It is called dynamically by the dashboard.
 
-- Captured: Logged when a target visits the link (Fingerprinting).
+Tunneling: If using Ngrok, ensure your auth token is configured via CLI (ngrok config add-authtoken <token>).
 
-- Converted: Logged when the target submits the password field.
+### 📊 Deployment Workflow
+- Craft: Use the Email Spoofer tab to set target parameters (Username, Device, etc.).
+- Deploy: In the Phish Template tab, select a port (e.g., 8778) and start the server.
+- Tunnel: Activate your preferred tunnel provider to generate a public URL.
+- Launch: Send the email via the dashboard. The link will automatically include your active tunnel URL.
+
+### 🛡️ Session Management
+SpineX uses PID isolation. You can start and stop the phishing server or the public tunnel at any time using the "Kill All Sessions" button. This ensures that system resources are cleaned up properly without crashing the dashboard.
 
 # ⚖️ Disclaimer
-This software is provided for educational purposes and authorized penetration testing only. The author is not responsible for any misuse or damage caused by this tool. Always obtain written consent before testing.
+This software is provided for educational purposes and authorized penetration testing only. Unauthorized use of this tool against targets without prior written consent is illegal. The creator of SPINEX assumes no responsibility for any misuse or damage caused by this application.
