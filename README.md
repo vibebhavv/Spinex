@@ -36,11 +36,11 @@ Requirements
 SMTP Credentials (e.g., Gmail App Password)
 
 Configuration
-SMTP: Place your credentials in .streamlit/secrets.toml.
+SMTP: Place your credentials in `.streamlit/secrets.toml`.
 
-Server: Ensure server.py is in the root directory. It is called dynamically by the dashboard.
+Server: Ensure `server.py` is in the root directory. It is called dynamically by the dashboard.
 
-Tunneling: If using Ngrok, ensure your auth token is configured via CLI (ngrok config add-authtoken <token>).
+Tunneling: If using Ngrok, ensure your auth token is configured via CLI (`ngrok config add-authtoken <token>`).
 
 ### 📊 Deployment Workflow
 - Craft: Use the Email Spoofer tab to set target parameters (Username, Device, etc.).
