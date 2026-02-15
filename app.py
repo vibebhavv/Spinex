@@ -71,18 +71,22 @@ def kill_all_sessions():
         ngrok.kill()
     except:
         pass
-    try:
-        if os.name == 'nt':
-            os.system('taskkill /f /im cloudflared.exe')
-        else:
-            os.system('pkill cloudflared')
-    except:
-        pass
-
+    if 'cf_proc' in st.session_state and st.session_state['cf_proc']:
+        try:
+            st.session_state['cf_proc'].terminate()
+            if os.name == 'nt':
+                os.system('taskkill /f /im cloudflared.exe')
+            else:
+                os.system('pkill cloudflared')
+        except:
+            pass
+        st.session_state['cf_proc'] = None
     st.session_state['server_pid'] = None
     st.session_state['server_live'] = False
     st.session_state['active_tunnel'] = "None"
     st.session_state['public_url'] = ""
+    
+    st.success("All sessions terminated successfully.")
 
 def start_local_server(port, directory):
     try:
