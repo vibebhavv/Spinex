@@ -1,4 +1,10 @@
-# SpineX Phish
+<h1 align="center">
+  <br>
+  <a href="https://github.com/vibebhavv/Spinex"><img src="https://ibb.co/M5QQ53jF" alt="Spinex"></a>
+  <br>
+  Spinex
+  <br>
+</h1>
 A Modular Adversary Simulation & Phishing Framework
 
 SpineX Phish is a high-performance, template-driven framework designed for security researchers to conduct end-to-end phishing simulations. By decoupling the dashboard from the exfiltration server, it provides a stable environment for credential harvesting and target analytics.
