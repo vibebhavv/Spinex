@@ -419,6 +419,22 @@ def about():
     caused by this application.
     """)
 
+def add_social_links():
+    """Adds LinkedIn and GitHub icons to the bottom of the sidebar."""
+    st.sidebar.markdown(
+        """
+        <div style="display: flex; justify-content: space-evenly; align-items: center;">
+            <a href="https://github.com/vibebhavv" target="_blank" style="text-decoration: none;">
+                <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="20" style="filter: invert(1);">
+            </a>
+            <a href="https://www.linkedin.com/in/vaibhavvpathak/" target="_blank" style="text-decoration: none;">
+                <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" width="20">
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 pg = st.navigation({
     "Main": [st.Page(home, title="Dashboard", icon="🖥️")],
     "Operations": [
@@ -427,4 +443,6 @@ pg = st.navigation({
         st.Page(about, title="About", icon="❔")
     ],
 })
+
+add_social_links()
 pg.run()
