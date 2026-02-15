@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <a href="https://github.com/vibebhavv/Spinex"><img src="https://ibb.co/M5QQ53jF" alt="Spinex"></a>
+  <a href="https://github.com/vibebhavv/Spinex"><img src="https://i.ibb.co/XkMMkvdc/spinex-logo.png" alt="Spinex"></a>
   <br>
   Spinex
   <br>
