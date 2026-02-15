@@ -51,5 +51,10 @@ Tunneling: If using Ngrok, ensure your auth token is configured via CLI (`ngrok 
 ### 🛡️ Session Management
 SpineX uses PID isolation. You can start and stop the phishing server or the public tunnel at any time using the "Kill All Sessions" button. This ensures that system resources are cleaned up properly without crashing the dashboard.
 
+### 💡 Future Advancement
+- Cookie Capturing
+- 2FA bypass
+- More templates
+
 # ⚖️ Disclaimer
 This software is provided for educational purposes and authorized penetration testing only. Unauthorized use of this tool against targets without prior written consent is illegal. The creator of SPINEX assumes no responsibility for any misuse or damage caused by this application.
