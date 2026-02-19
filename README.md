@@ -28,9 +28,14 @@ This tool automates the three pillars of a modern phishing operation:
 ├── assets/
 │   ├── mail_templates/    # HTML files for emails (IG, Google, etc.)
 │   └── phish_temp/        # The actual fake login pages (index.html)
+├── creds/
+│   ├── aitm_cookies.json      # Cookies captured by AiTM Proxy
+│   ├── aitm_credentials.json  # Credentials captured by AiTM Proxy
+│   └── victims.json           # Live log of captured credentials
 ├── app.py                 # Main Streamlit interface (Admin Panel)
+├── aitm_addon.py          # AiTM Proxy logic
 ├── server.py              # Flask Backend (Data Receiver & File Server)
-├── victims.json           # Live log of captured credentials
+├── requirements.txt       # Required modules for the app 
 └── .streamlit/secrets.toml # SMTP & Email configuration
 ```
 ## 🛠️ Setup & Usage
@@ -57,9 +62,9 @@ Tunneling: If using Ngrok, ensure your auth token is configured via CLI (`ngrok 
 SpineX uses PID isolation. You can start and stop the phishing server or the public tunnel at any time using the "Kill All Sessions" button. This ensures that system resources are cleaned up properly without crashing the dashboard.
 
 ### 💡 Future Advancement
+- AiTM Proxy
 - Cookie Capturing
 - 2FA bypass
-- More templates
 
 # ⚖️ Disclaimer
 This software is provided for educational purposes and authorized penetration testing only. Unauthorized use of this tool against targets without prior written consent is illegal. The creator of SPINEX assumes no responsibility for any misuse or damage caused by this application.
