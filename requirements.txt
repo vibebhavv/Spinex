@@ -4,3 +4,4 @@ flask-cors
 pyngrok
 playwright
 playwright install chromium
+mitmproxy
