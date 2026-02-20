@@ -35,7 +35,8 @@ This tool automates the three pillars of a modern phishing operation:
 ├── app.py                 # Main Streamlit interface (Admin Panel)
 ├── aitm_addon.py          # AiTM Proxy logic
 ├── server.py              # Flask Backend (Data Receiver & File Server)
-├── requirements.txt       # Required modules for the app 
+├── spinex_state.json      # Logging spinex state for session restore
+├── requirements.txt       # Required modules for the app
 └── .streamlit/secrets.toml # SMTP & Email configuration
 ```
 ## 🛠️ Setup & Usage
