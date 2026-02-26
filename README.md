@@ -21,7 +21,7 @@ This tool automates the three pillars of a modern phishing operation:
 - Precision Kill-Switch: Logic to terminate phish servers and tunnels without affecting the main Streamlit dashboard.
 - Advanced Fingerprinting: Captures User-Agent, IP address, and timestamps, organized by the specific target username provided during the campaign.
 - Agnostic Template Engine: Easily swap templates for Instagram, LinkedIn, or Corporate SSO by modifying the assets/ directory.
-
+- AiTM Support: Partial AiTM supported as it can capture session id for non 2FA instagram accounts.
 
 ## 📂 Directory Structure
 ```
@@ -30,7 +30,6 @@ This tool automates the three pillars of a modern phishing operation:
 │   └── phish_temp/        # The actual fake login pages (index.html)
 ├── creds/
 │   ├── aitm_cookies.json      # Cookies captured by AiTM Proxy
-│   ├── aitm_credentials.json  # Credentials captured by AiTM Proxy
 │   └── victims.json           # Live log of captured credentials
 ├── app.py                 # Main Streamlit interface (Admin Panel)
 ├── aitm_addon.py          # AiTM Proxy logic
@@ -64,8 +63,7 @@ SpineX uses PID isolation. You can start and stop the phishing server or the pub
 
 ### 💡 Future Advancement
 - AiTM Proxy
-- Cookie Capturing
-- 2FA bypass
+- 2FA/MFA bypass
 
 # ⚖️ Disclaimer
 This software is provided for educational purposes and authorized penetration testing only. Unauthorized use of this tool against targets without prior written consent is illegal. The creator of SPINEX assumes no responsibility for any misuse or damage caused by this application.
