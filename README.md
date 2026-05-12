@@ -40,9 +40,9 @@ This tool automates the three pillars of a modern phishing operation:
 ```
 ## 🛠️ Setup & Usage
 Requirements
-- Python 3.9+
-- pipx install -r requirements.txt
-
+```Python 3.9+
+pipx install -r requirements.txt
+```
 SMTP Credentials (e.g., Gmail App Password)
 
 Configuration
