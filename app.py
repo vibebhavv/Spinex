@@ -446,7 +446,7 @@ def craft_mail():
             else:
                 st.warning("Recipient email is required.")
     with t2:
-        st.components.v1.html(final_html, height=600, scrolling=True)
+        st.iframe(final_html, height=600, scrolling=True)
 
 def phish_temp():
     st.title("🎣 Phish Craft & Live Deployment")
@@ -465,7 +465,11 @@ def phish_temp():
     with t1:
         st.info("Visualizing index.html from assets/phish_temp")
         st.info("Select template from sidebar to preview.")
-        st.components.v1.html(html_content, height=600, scrolling=True)
+
+        import base64
+        html_b64 = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
+        iframe_src = f"data:text/html;base64,{html_b64}"
+        st.iframe(iframe_src, height=600)
     with t2:
         st.subheader("🚀 Production Environment")
         c1, c2, c3 = st.columns(3)
