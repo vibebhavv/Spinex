@@ -43,6 +43,7 @@ Requirements
 ```
 Python 3.9+
 pipx install -r requirements.txt
+streamlit run app.py
 ```
 SMTP Credentials (e.g., Gmail App Password)
 
