@@ -1,4 +1,12 @@
-# Spinex AiTM — Real-World Usage Tutorial
+<h1 align="center">
+  <br>
+  <a href="https://github.com/vibebhavv/Spinex"><img src="https://i.ibb.co/XkMMkvdc/spinex-logo.png" alt="Spinex" width="200"></a>
+  <br>
+  Spinex
+  <br>
+</h1>
+
+# Spinex Phish
 
 > ⚠️ **This tool is intended for authorized penetration testing and security research only.**
 > Using this against systems or accounts without explicit written permission is illegal.
