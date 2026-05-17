@@ -291,21 +291,21 @@ After the engagement:
 
 ```
 Spinex/
-├── app.py                  — Streamlit dashboard
-├── aitm_addon.py           — mitmproxy addon (credential/cookie capture + rewriting)
-├── config_manager.py       — configuration logic
-├── cert_manager.py         — TLS certificate lifecycle
-├── proxy_launcher.py       — mitmdump process management
-├── proxy_page.py           — Proxy Launcher UI
-├── session_viewer.py       — Live Sessions UI
-├── config_page.py          — AiTM Config UI
-├── cert_page.py            — TLS Certificate UI
-├── spinex_config.json      — your configuration
-└── creds/
-    ├── aitm_sessions.json  — captured sessions
-    ├── aitm_cookies.json   — raw cookie log
-    ├── aitm_credentials.json — raw credential log
-    ├── aitm_headers.json   — raw header log
-    ├── proxy.log           — mitmdump log
-    └── combined-cert.pem   — mitmproxy TLS cert
+├── app.py              ← stays at root (entry point)
+├── server.py           ← stays at root
+├── requirements.txt
+├── spinex_config.json
+├── spinex_state.json
+├── assets/
+├── creds/
+└── aitm/
+    ├── __init__.py
+    ├── aitm_addon.py
+    ├── config_manager.py
+    ├── cert_manager.py
+    ├── proxy_launcher.py
+    ├── config_page.py
+    ├── cert_page.py
+    ├── proxy_page.py
+    └── session_viewer.py
 ```
