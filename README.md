@@ -90,12 +90,6 @@ apt update && apt upgrade -y
 # Install Python and pip
 apt install python3 python3-pip git -y
 
-# Install mitmproxy
-pip3 install mitmproxy psutil
-
-# Install certbot with Cloudflare DNS plugin
-pip3 install certbot certbot-dns-cloudflare
-
 # Clone Spinex
 git clone https://github.com/vibebhavv/Spinex.git
 cd Spinex
