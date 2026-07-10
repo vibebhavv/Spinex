@@ -102,6 +102,7 @@ cd Spinex
 
 # Install Spinex requirements
 pip3 install -r requirements.txt
+playwright install chromium
 ```
 
 ---
