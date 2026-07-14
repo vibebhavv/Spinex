@@ -1299,7 +1299,7 @@ class AitmLogger:
         try:
             host        = flow.request.pretty_host
             url         = flow.request.url
-        if host in _REVERSE_DOMAIN_MAP:
+            if host in _REVERSE_DOMAIN_MAP:
                 real_host = _REVERSE_DOMAIN_MAP[host]
                 print(f"[Spinex] Rewriting: {host} → {real_host}")
                 flow.request.host = real_host
