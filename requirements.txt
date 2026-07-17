@@ -7,3 +7,4 @@ mitmproxy
 psutil
 certbot 
 certbot-dns-cloudflare
+brotli
