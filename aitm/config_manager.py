@@ -84,6 +84,8 @@ PLATFORM_DEFINITIONS: dict[str, dict] = {
         "real_domains": [
             "www.instagram.com",
             "i.instagram.com",
+            "graph.instagram.com",
+            "graphql.instagram.com",
         ],
     },
     "facebook": {
